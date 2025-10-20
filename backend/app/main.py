@@ -43,26 +43,14 @@ def root():
     }
 
 @app.get("/health")
-def health(db: Session = Depends(get_db)):
-    """Health check з перевіркою БД"""
-    try:
-        # Перевіряємо підключення до БД
-        db.execute("SELECT 1")
-        return {
-            "status": "healthy",
-            "service": "perkup-backend",
-            "database": "connected"
-        }
-    except Exception as e:
-        logger.error(f"Database connection failed: {e}")
-        return {
-            "status": "unhealthy",
-            "service": "perkup-backend",
-            "database": "disconnected",
-            "error": str(e)
-        }
+def health():
+    """Health check"""
+    return {
+        "status": "healthy",
+        "service": "perkup-backend"
+    }
 
-@app.get("/api/v1/locations", response_model=list[schemas.Location])
+@app.get("/api/v1/locations")
 def get_locations(db: Session = Depends(get_db)):
     """Отримати список локацій з БД"""
     logger.info("Getting locations from database")
@@ -74,7 +62,7 @@ def get_locations(db: Session = Depends(get_db)):
         
         logger.info(f"Found {len(locations)} locations")
         
-        # Якщо локацій немає - повертаємо хардкод для тесту
+        # Якщо локацій немає - повертаємо хардкод
         if not locations:
             logger.warning("No locations in database, returning hardcoded data")
             return [
@@ -87,10 +75,7 @@ def get_locations(db: Session = Depends(get_db)):
                     "latitude": 50.514794,
                     "longitude": 30.782308,
                     "radius_meters": 100,
-                    "description": "Кав'ярня в ТРЦ Mark Mall",
-                    "is_active": True,
-                    "created_at": "2025-01-01T00:00:00",
-                    "updated_at": None
+                    "is_active": True
                 },
                 {
                     "id": 2,
@@ -101,10 +86,7 @@ def get_locations(db: Session = Depends(get_db)):
                     "latitude": 50.501265,
                     "longitude": 30.754011,
                     "radius_meters": 100,
-                    "description": "Кав'ярня біля парку",
-                    "is_active": True,
-                    "created_at": "2025-01-01T00:00:00",
-                    "updated_at": None
+                    "is_active": True
                 }
             ]
         
@@ -112,7 +94,7 @@ def get_locations(db: Session = Depends(get_db)):
         
     except Exception as e:
         logger.error(f"Error getting locations: {e}")
-        # Fallback на хардкод якщо БД не працює
+        # Fallback на хардкод
         return [
             {
                 "id": 1,
@@ -123,10 +105,7 @@ def get_locations(db: Session = Depends(get_db)):
                 "latitude": 50.514794,
                 "longitude": 30.782308,
                 "radius_meters": 100,
-                "description": "Кав'ярня в ТРЦ Mark Mall",
-                "is_active": True,
-                "created_at": "2025-01-01T00:00:00",
-                "updated_at": None
+                "is_active": True
             },
             {
                 "id": 2,
@@ -137,18 +116,6 @@ def get_locations(db: Session = Depends(get_db)):
                 "latitude": 50.501265,
                 "longitude": 30.754011,
                 "radius_meters": 100,
-                "description": "Кав'ярня біля парку",
-                "is_active": True,
-                "created_at": "2025-01-01T00:00:00",
-                "updated_at": None
+                "is_active": True
             }
         ]
-
-@app.post("/api/v1/locations", response_model=schemas.Location)
-def create_location(location: schemas.LocationCreate, db: Session = Depends(get_db)):
-    """Створити нову локацію"""
-    db_location = models.Location(**location.dict())
-    db.add(db_location)
-    db.commit()
-    db.refresh(db_location)
-    return db_locationgit add backend/app/main.py
