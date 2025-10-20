@@ -1,6 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 import logging
+
+from app.database import engine, get_db
+from app import models, schemas
+
+# Створюємо таблиці
+models.Base.metadata.create_all(bind=engine)
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -12,10 +19,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS - ДОЗВОЛЯЄМО ВСІМ
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Дозволяємо всім доменам
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,7 +31,6 @@ app.add_middleware(
 @app.get("/")
 def root():
     """Головна сторінка API"""
-    logger.info("Root endpoint called")
     return {
         "message": "🤖☕ PerkUP API is running!",
         "version": "1.0.0",
@@ -39,40 +45,21 @@ def root():
 @app.get("/health")
 def health():
     """Health check"""
-    logger.info("Health check called")
     return {"status": "healthy", "service": "perkup-backend"}
 
-@app.get("/api/v1/locations")
-def get_locations():
-    """Отримати список локацій"""
-    logger.info("Get locations called")
-    
-    locations = [
-        {
-            "id": 1,
-            "name": "Mark Mall",
-            "address": "Київська, 239, Бровари",
-            "latitude": 50.514794,
-            "longitude": 30.782308,
-            "radius_meters": 100,
-            "is_active": True
-        },
-        {
-            "id": 2,
-            "name": "Парк Приозерний",
-            "address": "вул. Фіалковського, 27а, Бровари",
-            "latitude": 50.501265,
-            "longitude": 30.754011,
-            "radius_meters": 100,
-            "is_active": True
-        }
-    ]
-    
-    logger.info(f"Returning {len(locations)} locations")
+@app.get("/api/v1/locations", response_model=list[schemas.Location])
+def get_locations(db: Session = Depends(get_db)):
+    """Отримати список локацій з БД"""
+    logger.info("Getting locations from database")
+    locations = db.query(models.Location).filter(models.Location.is_active == True).all()
+    logger.info(f"Found {len(locations)} locations")
     return locations
 
-# Додатковий endpoint для CORS preflight
-@app.options("/api/v1/locations")
-def options_locations():
-    """CORS preflight"""
-    return {"message": "OK"}
+@app.post("/api/v1/locations", response_model=schemas.Location)
+def create_location(location: schemas.LocationCreate, db: Session = Depends(get_db)):
+    """Створити нову локацію"""
+    db_location = models.Location(**location.dict())
+    db.add(db_location)
+    db.commit()
+    db.refresh(db_location)
+    return db_location
