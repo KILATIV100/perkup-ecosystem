@@ -1,26 +1,18 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="PerkUP API",
-    description="Backend API для PerkUP Ecosystem",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    version="1.0.0"
 )
 
-# CORS
+# CORS з environment variable
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://perkup-tma.vercel.app",
-        "https://*.vercel.app",
-        "https://perkup.com.ua",
-        "https://www.perkup.com.ua",
-        "https://t.me",
-        "http://localhost:5173",
-        "http://localhost:3000"
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,11 +28,10 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "perkup-backend"}
+    return {"status": "healthy"}
 
 @app.get("/api/v1/locations")
 def get_locations():
-    """Отримати список локацій"""
     return [
         {
             "id": 1,
