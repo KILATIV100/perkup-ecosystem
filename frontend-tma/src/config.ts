@@ -1,1 +1,1 @@
-export const API_URL = 'https://perkup-backend-production.up.railway.app/api/v1';
+export const API_URL = 'https://perkup-ecosystem-production.up.railway.app/api/v1';
