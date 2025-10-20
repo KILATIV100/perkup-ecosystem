@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { API_URL } from './config'
 
 interface Location {
   id: number
@@ -17,12 +18,13 @@ function App() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/locations')
+    fetch(`${API_URL}/locations`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch')
         return res.json()
       })
       .then(data => {
+        console.log('Locations loaded:', data)
         setLocations(data)
         setLoading(false)
       })
