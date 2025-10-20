@@ -1,18 +1,21 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="PerkUP API",
+    description="Backend API для PerkUP Ecosystem",
     version="1.0.0"
 )
 
-# CORS з environment variable
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
-
+# CORS - ДОЗВОЛЯЄМО ВСІМ
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["*"],  # Дозволяємо всім доменам
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,19 +23,31 @@ app.add_middleware(
 
 @app.get("/")
 def root():
+    """Головна сторінка API"""
+    logger.info("Root endpoint called")
     return {
         "message": "🤖☕ PerkUP API is running!",
         "version": "1.0.0",
-        "status": "healthy"
+        "status": "healthy",
+        "endpoints": {
+            "health": "/health",
+            "locations": "/api/v1/locations",
+            "docs": "/docs"
+        }
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    """Health check"""
+    logger.info("Health check called")
+    return {"status": "healthy", "service": "perkup-backend"}
 
 @app.get("/api/v1/locations")
 def get_locations():
-    return [
+    """Отримати список локацій"""
+    logger.info("Get locations called")
+    
+    locations = [
         {
             "id": 1,
             "name": "Mark Mall",
@@ -52,3 +67,12 @@ def get_locations():
             "is_active": True
         }
     ]
+    
+    logger.info(f"Returning {len(locations)} locations")
+    return locations
+
+# Додатковий endpoint для CORS preflight
+@app.options("/api/v1/locations")
+def options_locations():
+    """CORS preflight"""
+    return {"message": "OK"}
