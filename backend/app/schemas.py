@@ -1,8 +1,12 @@
+# backend/app/schemas.py
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
-# ============= USER SCHEMAS =============
+# ============================================================================
+# USER SCHEMAS
+# ============================================================================
+
 class UserBase(BaseModel):
     telegram_id: Optional[int] = None
     username: Optional[str] = None
@@ -21,7 +25,10 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-# ============= LOCATION SCHEMAS =============
+# ============================================================================
+# LOCATION SCHEMAS
+# ============================================================================
+
 class LocationBase(BaseModel):
     name: str
     slug: str
@@ -41,7 +48,10 @@ class LocationResponse(LocationBase):
     class Config:
         from_attributes = True
 
-# ============= CHECKIN SCHEMAS =============
+# ============================================================================
+# CHECKIN SCHEMAS
+# ============================================================================
+
 class CheckinCreate(BaseModel):
     location_id: int = Field(..., gt=0)
     latitude: float = Field(..., ge=-90, le=90)
@@ -58,24 +68,16 @@ class CheckinResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class UserUpdatedInfo(BaseModel):
-    """Оновлена інформація про користувача після чекіну"""
-    total_points: int
-    total_checkins: int
-    level: int
-    level_progress: int
+# ============================================================================
+# AUTH SCHEMAS
+# ============================================================================
 
-class CheckinSuccessResponse(BaseModel):
-    success: bool
-    checkin: CheckinResponse
-    user_updated: UserUpdatedInfo
-    message: str
-
-# ============= AUTH SCHEMAS =============
 class TelegramAuthRequest(BaseModel):
+    """Request для Telegram авторизації"""
     init_data: str
 
 class AuthResponse(BaseModel):
+    """Response після успішної авторизації"""
     access_token: str
     token_type: str = "bearer"
     expires_in: int
