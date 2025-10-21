@@ -1,4 +1,3 @@
-# backend/app/schemas.py
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
@@ -25,6 +24,12 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+
 # ============================================================================
 # LOCATION SCHEMAS
 # ============================================================================
@@ -38,15 +43,23 @@ class LocationBase(BaseModel):
     longitude: float
     radius_meters: int = 100
     description: Optional[str] = None
+    phone: Optional[str] = None
     is_active: bool = True
+
+class LocationCreate(LocationBase):
+    pass
 
 class LocationResponse(LocationBase):
     id: int
     total_checkins: int
     created_at: datetime
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
+
+# Для сумісності зі старим кодом
+Location = LocationResponse
 
 # ============================================================================
 # CHECKIN SCHEMAS
@@ -67,6 +80,18 @@ class CheckinResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class UserUpdatedInfo(BaseModel):
+    total_points: int
+    total_checkins: int
+    level: int
+    level_progress: int
+
+class CheckinSuccessResponse(BaseModel):
+    success: bool
+    checkin: CheckinResponse
+    user_updated: UserUpdatedInfo
+    message: str
 
 # ============================================================================
 # AUTH SCHEMAS

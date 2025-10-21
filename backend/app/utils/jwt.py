@@ -3,7 +3,6 @@ from typing import Optional
 from jose import JWTError, jwt
 from app.config import settings
 
-# Використовуємо JWT_SECRET_KEY або fallback на SECRET_KEY
 SECRET_KEY = settings.JWT_SECRET_KEY or settings.SECRET_KEY
 ALGORITHM = settings.JWT_ALGORITHM
 ACCESS_TOKEN_EXPIRE_DAYS = settings.JWT_EXPIRATION_DAYS

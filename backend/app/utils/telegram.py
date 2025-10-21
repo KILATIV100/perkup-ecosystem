@@ -8,7 +8,6 @@ from typing import Optional
 def validate_telegram_init_data(init_data: str, bot_token: str) -> Optional[dict]:
     """
     Валідація initData від Telegram Web App
-    https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
     """
     try:
         parsed = parse_qs(init_data)
@@ -41,7 +40,7 @@ def validate_telegram_init_data(init_data: str, bot_token: str) -> Optional[dict
         if calculated_hash != hash_value:
             return None
         
-        # Перевіряємо auth_date (не старіше 24 годин)
+        # Перевіряємо auth_date
         auth_date = int(parsed.get('auth_date', [0])[0])
         if time.time() - auth_date > 86400:
             return None
