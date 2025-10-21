@@ -1,18 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+# backend/app/api/auth.py
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.database import get_db
-from app import models, schemas
+from app import models
 from app.utils.telegram import validate_telegram_init_data
 from app.utils.jwt import create_access_token
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/telegram")  # БЕЗ response_model!
+# Inline schema (тимчасово)
+class TelegramAuthRequest(BaseModel):
+    init_data: str
+
+@router.post("/telegram")
 async def telegram_auth(
-    data: schemas.TelegramAuthRequest,
+    data: TelegramAuthRequest,
     db: Session = Depends(get_db)
 ):
     """Авторізація через Telegram Mini App"""
@@ -62,7 +68,6 @@ async def telegram_auth(
         data={"user_id": user.id, "telegram_id": telegram_id}
     )
     
-    # Повертаємо dict (FastAPI автоматично серіалізує)
     return {
         "access_token": access_token,
         "token_type": "bearer",
