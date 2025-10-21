@@ -58,10 +58,17 @@ class CheckinResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserUpdatedInfo(BaseModel):
+    """Оновлена інформація про користувача після чекіну"""
+    total_points: int
+    total_checkins: int
+    level: int
+    level_progress: int
+
 class CheckinSuccessResponse(BaseModel):
     success: bool
     checkin: CheckinResponse
-    user_updated: dict
+    user_updated: UserUpdatedInfo
     message: str
 
 # ============= AUTH SCHEMAS =============

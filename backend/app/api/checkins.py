@@ -4,7 +4,8 @@ from sqlalchemy import and_, func
 from typing import List, Optional
 from datetime import datetime, timedelta
 from app.database import get_db
-from app import models, schemas
+from app import schemas
+from app import models
 from app.utils.geo import haversine_distance
 from app.utils.jwt import decode_access_token
 from app.config import settings
@@ -146,17 +147,17 @@ async def create_checkin(
     db.refresh(current_user)
     
     # 7. Формуємо відповідь
-    return {
-        "success": True,
-        "checkin": checkin,
-        "user_updated": {
-            "total_points": current_user.points,
-            "total_checkins": current_user.total_checkins,
-            "level": current_user.level,
-            "level_progress": (current_user.experience % 100)  # % до наступного рівня
-        },
-        "message": f"🎉 Check-in успішний! +{points_earned} балів"
-    }
+    return schemas.CheckinSuccessResponse(
+    success=True,
+    checkin=checkin,
+    user_updated=schemas.UserUpdatedInfo(
+        total_points=current_user.points,
+        total_checkins=current_user.total_checkins,
+        level=current_user.level,
+        level_progress=(current_user.experience % 100)
+    ),
+    message=f"🎉 Check-in успішний! +{points_earned} балів"
+)
 
 
 @router.get("/my-history", response_model=List[schemas.CheckinResponse])
