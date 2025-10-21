@@ -1,20 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime
+
 from app.database import get_db
 from app import models, schemas
 from app.utils.telegram import validate_telegram_init_data
 from app.utils.jwt import create_access_token
 from app.config import settings
-from datetime import datetime
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/telegram", response_model=schemas.AuthResponse)
+@router.post("/telegram")  # БЕЗ response_model!
 async def telegram_auth(
     data: schemas.TelegramAuthRequest,
     db: Session = Depends(get_db)
 ):
-    """Авторизація через Telegram Mini App"""
+    """Авторізація через Telegram Mini App"""
     
     # Валідуємо init_data
     user_data = validate_telegram_init_data(
@@ -23,7 +24,10 @@ async def telegram_auth(
     )
     
     if not user_data:
-        raise HTTPException(status_code=401, detail="Invalid Telegram authentication data")
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid Telegram authentication data"
+        )
     
     telegram_id = user_data.get('id')
     
@@ -33,7 +37,6 @@ async def telegram_auth(
     ).first()
     
     if not user:
-        # Створюємо нового користувача
         user = models.User(
             telegram_id=telegram_id,
             username=user_data.get('username'),
@@ -46,7 +49,6 @@ async def telegram_auth(
         db.commit()
         db.refresh(user)
     else:
-        # Оновлюємо дані користувача
         user.username = user_data.get('username')
         user.first_name = user_data.get('first_name')
         user.last_name = user_data.get('last_name')
@@ -60,9 +62,22 @@ async def telegram_auth(
         data={"user_id": user.id, "telegram_id": telegram_id}
     )
     
+    # Повертаємо dict (FastAPI автоматично серіалізує)
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "expires_in": settings.JWT_EXPIRATION_DAYS * 86400,
-        "user": user
+        "user": {
+            "id": user.id,
+            "telegram_id": user.telegram_id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "photo_url": user.photo_url,
+            "points": user.points,
+            "level": user.level,
+            "total_checkins": user.total_checkins,
+            "best_game_score": user.best_game_score,
+            "created_at": user.created_at.isoformat()
+        }
     }

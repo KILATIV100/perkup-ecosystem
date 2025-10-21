@@ -1,30 +1,37 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app import models, schemas
 from app.api.checkins import get_current_user
+from app import models
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-@router.get("/me", response_model=schemas.UserResponse)
+@router.get("/me")  # БЕЗ response_model
 async def get_my_profile(
     current_user: models.User = Depends(get_current_user)
 ):
     """Отримати профіль поточного користувача"""
-    return current_user
+    return {
+        "id": current_user.id,
+        "telegram_id": current_user.telegram_id,
+        "username": current_user.username,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "photo_url": current_user.photo_url,
+        "points": current_user.points,
+        "level": current_user.level,
+        "total_checkins": current_user.total_checkins,
+        "best_game_score": current_user.best_game_score,
+        "created_at": current_user.created_at.isoformat()
+    }
 
-
-@router.patch("/me", response_model=schemas.UserResponse)
+@router.patch("/me")  # БЕЗ response_model
 async def update_my_profile(
     updates: dict,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Оновити профіль поточного користувача
-    
-    Дозволені поля: username, first_name, last_name, email
-    """
+    """Оновити профіль поточного користувача"""
     
     allowed_fields = ['username', 'first_name', 'last_name', 'email']
     
@@ -35,4 +42,13 @@ async def update_my_profile(
     db.commit()
     db.refresh(current_user)
     
-    return current_user
+    return {
+        "id": current_user.id,
+        "telegram_id": current_user.telegram_id,
+        "username": current_user.username,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "points": current_user.points,
+        "level": current_user.level,
+        "created_at": current_user.created_at.isoformat()
+    }
