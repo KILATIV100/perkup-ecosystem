@@ -1,11 +1,12 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 import logging
 
-from app.database import engine, get_db, Base
-from app import models, schemas
+from app.database import engine, Base
 from app.config import settings
+
+# Імпортуємо models ПЕРЕД створенням таблиць
+from app.models import User, Location, Checkin  # ВАЖЛИВО!
 
 # Import routers
 from app.api import auth, locations, checkins, users
@@ -14,10 +15,10 @@ from app.api import auth, locations, checkins, users
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Створюємо таблиці (тимчасово для MVP)
+# Створюємо таблиці
 try:
     Base.metadata.create_all(bind=engine)
-    logger.info("✅ Database tables created successfully")
+    logger.info("✅ Database tables created")
 except Exception as e:
     logger.error(f"❌ Failed to create tables: {e}")
 
@@ -43,10 +44,8 @@ app.include_router(locations.router, prefix="/api/v1")
 app.include_router(checkins.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 
-
 @app.get("/")
 def root():
-    """Головна сторінка API"""
     return {
         "message": "🤖☕ PerkUP API is running!",
         "version": "1.0.0",
@@ -61,10 +60,8 @@ def root():
         }
     }
 
-
 @app.get("/health")
 def health():
-    """Health check"""
     return {
         "status": "healthy",
         "service": "perkup-backend",

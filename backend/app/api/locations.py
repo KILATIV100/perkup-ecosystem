@@ -1,20 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 from app.database import get_db
-from app import models
+from app.models import Location  # Прямий імпорт!
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
-@router.get("")  # БЕЗ response_model
+@router.get("")
 async def get_locations(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
     """Отримати список всіх активних локацій"""
-    locations = db.query(models.Location).filter(
-        models.Location.is_active == True
+    locations = db.query(Location).filter(
+        Location.is_active == True
     ).offset(skip).limit(limit).all()
     
     return [{
@@ -33,15 +32,16 @@ async def get_locations(
         "created_at": loc.created_at.isoformat()
     } for loc in locations]
 
-@router.get("/{location_id}")  # БЕЗ response_model
+
+@router.get("/{location_id}")
 async def get_location(
     location_id: int,
     db: Session = Depends(get_db)
 ):
     """Отримати деталі конкретної локації"""
-    location = db.query(models.Location).filter(
-        models.Location.id == location_id,
-        models.Location.is_active == True
+    location = db.query(Location).filter(
+        Location.id == location_id,
+        Location.is_active == True
     ).first()
     
     if not location:

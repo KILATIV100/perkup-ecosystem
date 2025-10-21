@@ -13,7 +13,6 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=True)
     photo_url = Column(Text)
     
-    # Loyalty
     points = Column(Integer, default=0)
     experience = Column(Integer, default=0)
     level = Column(Integer, default=1)
@@ -21,7 +20,6 @@ class User(Base):
     total_games_played = Column(Integer, default=0)
     best_game_score = Column(Integer, default=0)
     
-    # Metadata
     language_code = Column(String(10), default='uk')
     timezone = Column(String(50), default='Europe/Kiev')
     last_active_at = Column(DateTime(timezone=True))

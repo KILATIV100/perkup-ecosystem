@@ -1,18 +1,17 @@
-# backend/app/api/auth.py
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 from pydantic import BaseModel
 
 from app.database import get_db
-from app import models
+from app.models import User  # Прямий імпорт!
 from app.utils.telegram import validate_telegram_init_data
 from app.utils.jwt import create_access_token
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# Inline schema (тимчасово)
+# Inline schema
 class TelegramAuthRequest(BaseModel):
     init_data: str
 
@@ -38,12 +37,12 @@ async def telegram_auth(
     telegram_id = user_data.get('id')
     
     # Шукаємо або створюємо користувача
-    user = db.query(models.User).filter(
-        models.User.telegram_id == telegram_id
+    user = db.query(User).filter(
+        User.telegram_id == telegram_id
     ).first()
     
     if not user:
-        user = models.User(
+        user = User(
             telegram_id=telegram_id,
             username=user_data.get('username'),
             first_name=user_data.get('first_name'),
