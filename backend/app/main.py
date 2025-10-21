@@ -6,8 +6,12 @@ import logging
 from app.database import engine, get_db, Base
 from app import models, schemas
 
-# Створюємо таблиці
-Base.metadata.create_all(bind=engine)
+# ТИМЧАСОВО: Створюємо таблиці при старті
+try:
+    Base.metadata.create_all(bind=engine)
+    logging.info("✅ Database tables created successfully")
+except Exception as e:
+    logging.error(f"❌ Failed to create tables: {e}")
 
 # Logging
 logging.basicConfig(level=logging.INFO)
