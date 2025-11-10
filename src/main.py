@@ -12,31 +12,30 @@ from src.db.models import Base
 from src.db.database import create_db_and_tables, AsyncSessionLocal
 from src.db.seed import seed_db
 from src.app.repositories.user_repo import UserRepository
-from src.db.database import get_db_session # Імпорт генератора сесій
+from src.app.repositories.location_repo import LocationRepository # <--- НОВИЙ ІМПОРТ
+from src.db.database import get_db_session
 
 # --- Middlewares ---
 
-# Тут ми використовуємо простий функціональний підхід для DI,
-# який буде додавати сесію та репозиторій до контексту оновлення.
 async def db_session_middleware(handler, event: Update, data: dict):
     """
     Middleware, який ініціалізує сесію бази даних для кожного запиту
-    та передає об'єкт UserRepository у хендлер.
+    та передає об'єкти Repository у хендлер (Dependency Injection).
     """
     
-    # 1. Отримання сесії через генератор
     async for session in get_db_session():
-        # 2. Ініціалізація Репозиторію
+        # 1. Ініціалізація Репозиторіїв
         user_repo = UserRepository(session)
+        location_repo = LocationRepository(session) # <--- ІНІЦІАЛІЗАЦІЯ LOCATION REPO
         
-        # 3. Передача в контекст
+        # 2. Передача в контекст
         data["session"] = session
         data["user_repo"] = user_repo
+        data["location_repo"] = location_repo # <--- ПЕРЕДАЧА В КОНТЕКСТ
         
-        # 4. Виконання наступного хендлера/мідлвару
+        # 3. Виконання наступного хендлера/мідлвару
         result = await handler(event, data)
         
-        # 5. Сесія закривається автоматично після виходу з 'async with' у get_db_session
         return result
 
 
@@ -51,7 +50,7 @@ async def main() -> None:
 
     # 2. Ініціалізація Бази Даних та Таблиць
     logger.info(f"Connecting to database: {settings.DB_HOST}/{settings.DB_NAME}...")
-    await create_db_and_tables(Base) # Створюємо таблиці
+    await create_db_and_tables(Base) 
     logger.success("Database tables initialized successfully (or already exist).")
     
     # 3. Наповнення Бази Даних Початковими Даними (Seeding)
@@ -68,7 +67,6 @@ async def main() -> None:
     dp.include_router(start.router)
     
     # 6. Встановлення Middleware для Dependency Injection
-    # Всі оновлення тепер будуть мати доступ до 'session' та 'user_repo'
     dp.update.middleware(db_session_middleware)
     
     # 7. Запуск Polling
