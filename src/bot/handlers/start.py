@@ -7,31 +7,45 @@ from loguru import logger
 from src.app.repositories.user_repo import UserRepository
 from src.app.repositories.location_repo import LocationRepository
 from src.app.domain.models import LocationDTO
-from src.db.models import User # Потрібно для Pydantic from_attributes
+from src.db.models import User
 from src.bot.keyboards.location_menu import get_location_selection_keyboard
 from src.bot.keyboards.main_menu import get_main_menu_keyboard
+from src.app.services.loyalty_service import PosterLoyaltyService
 
 router = Router()
 
-# --- Приватна функція для відображення головного меню ---
+# --- Приватна функція для відображення головного меню (ЕКСПОРТОВАНО) ---
 async def _show_main_menu(message_or_callback: Message | CallbackQuery, user: User, location_name: str) -> None:
     """Показує головне меню бота (викликається, коли локація вже вибрана)."""
     
-    # Визначаємо, звідки прийшов запит
     target_message = message_or_callback.message if isinstance(message_or_callback, CallbackQuery) else message_or_callback
     user_name = user.name or target_message.from_user.first_name
     
     welcome_text = (
-        f"👋 Вітаю, **{user_name}**! \n\n"
+        f"👋 Вітаю, **{user_name}**, у **PerkUP Нова Екосистема**! \n\n"
         f"Ваша поточна локація: **{location_name}**\n\n"
         "Обери дію, щоб зробити замовлення, переглянути бонуси або профіль:"
     )
     
-    await target_message.answer(
-        text=welcome_text,
-        reply_markup=get_main_menu_keyboard(),
-        parse_mode="Markdown" 
-    )
+    # Відповідь має бути відредагована або нова залежно від типу вхідного об'єкта
+    if isinstance(message_or_callback, CallbackQuery):
+        await target_message.edit_text(
+            welcome_text,
+            reply_markup=get_main_menu_keyboard(),
+            parse_mode="Markdown" 
+        )
+    else:
+        await target_message.answer(
+            welcome_text,
+            reply_markup=get_main_menu_keyboard(),
+            parse_mode="Markdown" 
+        )
+        
+# --- Приватна функція для отримання клавіатури локацій (ЕКСПОРТОВАНО) ---
+def _show_location_selection(locations_db: list) -> InlineKeyboardMarkup:
+    """Формує клавіатуру вибору локацій."""
+    locations_dto = [LocationDTO.model_validate(loc) for loc in locations_db]
+    return get_location_selection_keyboard(locations_dto)
 
 
 # --- 1. Обробник команди /start ---
@@ -49,36 +63,27 @@ async def command_start_handler(
     user_id = message.from_user.id
     user_full_name = message.from_user.full_name
 
-    # 1. Ідентифікація користувача (DDD: UserRepository)
     user_db, is_new = await user_repo.get_or_create_user(
         user_id=user_id, 
         user_name=user_full_name
     )
-    await user_repo.session.commit() # Фіксуємо створення, якщо воно відбулося
+    await user_repo.session.commit()
     
-    # 2. Перевірка локації
     if user_db.preferred_location_id is None:
         logger.info(f"User {user_id} is new or needs location selection.")
         
-        # 3. Якщо локації немає, пропонуємо вибрати
         locations_db = await location_repo.get_active_locations()
         
-        # Мапуємо ORM-об'єкти на DTO для чистоти
-        locations_dto = [LocationDTO.model_validate(loc) for loc in locations_db]
-        
-        if not locations_dto:
-             await message.answer(
-                "На жаль, наразі немає доступних локацій. Спробуйте пізніше."
-             )
+        if not locations_db:
+             await message.answer("На жаль, наразі немає доступних локацій. Спробуйте пізніше.")
              return
 
         await message.answer(
             "📍 **Будь ласка, виберіть локацію PerkUP**, в якій ви плануєте робити замовлення:",
-            reply_markup=get_location_selection_keyboard(locations_dto),
+            reply_markup=_show_location_selection(locations_db),
             parse_mode="Markdown"
         )
     else:
-        # 4. Якщо локація є, показуємо головне меню
         location = await location_repo.get_by_id(user_db.preferred_location_id)
         location_name = location.name if location else "Невідома локація"
         await _show_main_menu(message, user_db, location_name)
@@ -97,24 +102,20 @@ async def select_location_callback(
     location_id_str = callback.data.split(":")[1]
     location_id = int(location_id_str)
     
-    # 1. Оновлення даних користувача
     user_db = await user_repo.get_by_id(callback.from_user.id)
     location_db = await location_repo.get_by_id(location_id)
     
     if user_db and location_db:
-        # Оновлюємо модель у сесії
         user_db.preferred_location_id = location_id
-        
-        # Фіксуємо зміни в базі даних
         await user_repo.session.commit()
         
-        # 2. Зміна повідомлення (UI/UX)
+        # Редагуємо повідомлення про вибір
         await callback.message.edit_text(
             f"✅ Ваша локація встановлена: **{location_db.name}**! \n\n"
             "Тепер ви можете перейти до формування замовлення.",
             parse_mode="Markdown"
         )
-        # 3. Відразу показуємо головне меню новим повідомленням
+        # Показуємо головне меню новим повідомленням
         await _show_main_menu(callback, user_db, location_db.name)
         
         await callback.answer(f"Локація змінена на {location_db.name}")
