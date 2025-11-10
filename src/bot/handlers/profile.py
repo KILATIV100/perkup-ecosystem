@@ -11,26 +11,21 @@ from src.app.repositories.user_repo import UserRepository
 from src.app.repositories.location_repo import LocationRepository
 from src.app.services.loyalty_service import PosterLoyaltyService
 from src.db.models import User
-from src.bot.states.order import ProfileState
+from src.bot.states.order import ProfileState, OrderState # <--- ДОДАНО OrderState для зміни локації
 from src.bot.keyboards.profile_kb import get_profile_main_keyboard, get_request_contact_reply_keyboard, get_remove_reply_keyboard
+from src.bot.handlers.start import _show_main_menu, _show_location_selection # <--- Імпорт приватних функцій
 
 router = Router()
 
 def clean_phone_number(phone: str) -> str:
     """Очищує номер телефону до формату Poster POS (напр., +380991234567)."""
-    # Видаляємо всі нецифрові символи
     cleaned = re.sub(r'\D', '', phone)
     
-    # Poster API може вимагати формат без +38, або з +38. 
-    # Залишимо повний міжнародний формат для універсальності, якщо не вказано інше.
     if len(cleaned) == 10 and cleaned.startswith('0'):
-        # Якщо введено 0991234567 -> +380991234567
         return f"+38{cleaned}"
     elif len(cleaned) == 12 and cleaned.startswith('380'):
-        # Якщо введено 380991234567 -> +380991234567
         return f"+{cleaned}"
     
-    # В іншому випадку повертаємо те, що є (можливо, вже з +)
     return phone
 
 
@@ -48,7 +43,6 @@ async def _show_profile_menu(callback: CallbackQuery, user_repo: UserRepository,
     is_phone_attached = False
 
     if user_db.phone_number:
-        # 1. Запит даних з Poster POS
         poster_info = await loyalty_service.get_client_info(user_db.phone_number)
         
         if poster_info and poster_info.get("is_registered"):
@@ -60,7 +54,6 @@ async def _show_profile_menu(callback: CallbackQuery, user_repo: UserRepository,
             is_phone_attached = True
             
     
-    # 2. Формування тексту профілю
     profile_text = (
         "⭐ **Ваш Профіль PerkUP**\n\n"
         f"**👤 Ім'я**: {user_db.name or callback.from_user.first_name}\n"
@@ -70,13 +63,12 @@ async def _show_profile_menu(callback: CallbackQuery, user_repo: UserRepository,
         "Використовуйте бонуси для оплати до 50% вартості замовлення!"
     )
     
-    # 3. Редагування повідомлення
     await callback.message.edit_text(
         profile_text,
         reply_markup=get_profile_main_keyboard(is_phone_attached),
         parse_mode="Markdown"
     )
-    await callback.answer()
+    # Ми не відповідаємо на callback.answer тут, оскільки це приватна функція
 
 
 # --- ХЕНДЛЕРИ ПРОФІЛЮ ---
@@ -91,6 +83,7 @@ async def show_profile_handler(
 ) -> None:
     """Показує головний екран профілю користувача."""
     await _show_profile_menu(callback, user_repo, loyalty_service, state)
+    await callback.answer()
 
 
 # --- 2. Обробник: Запит на Прив'язку Телефону ---
@@ -103,9 +96,8 @@ async def request_phone_handler(callback: CallbackQuery, state: FSMContext) -> N
     await callback.message.edit_text(
         "📞 **Прив'язка Номера Телефону**\n\n"
         "Для доступу до бонусів Poster POS, будь ласка, **натисніть кнопку** "
-        "нижче, щоб поділитися своїм контактом. Це безпечно і необхідно "
-        "для вашої ідентифікації в системі лояльності.",
-        reply_markup=get_request_contact_reply_keyboard(), # Показуємо Reply-клавіатуру
+        "нижче, щоб поділитися своїм контактом. Це безпечно.",
+        reply_markup=get_request_contact_reply_keyboard(),
         parse_mode="Markdown"
     )
     await callback.answer()
@@ -124,33 +116,21 @@ async def receive_contact_handler(
     phone_number = message.contact.phone_number
     user_id = message.from_user.id
     
-    # 1. Очищення та форматування номера
     cleaned_phone = clean_phone_number(phone_number)
     
-    # 2. Збереження в БД
     user_db = await user_repo.get_by_id(user_id)
     user_db.phone_number = cleaned_phone
     await user_repo.session.commit()
     
-    # 3. Спроба реєстрації/синхронізації в Poster POS (або перевірка)
-    poster_info = await loyalty_service.get_client_info(cleaned_phone)
-    
-    # 4. UI/UX: Повернення до профілю
+    # UI/UX: Повернення до профілю
     await message.answer(
         "✅ Номер телефону успішно збережено!",
-        reply_markup=get_remove_reply_keyboard() # Приховуємо клавіатуру запиту контакту
+        reply_markup=get_remove_reply_keyboard() 
     )
     
     # Імітуємо CallbackQuery для повторного відображення профілю
-    temp_callback = CallbackQuery(
-        id='temp_id', 
-        from_user=message.from_user, 
-        chat_instance='temp_chat', 
-        data='show_profile',
-        message=message # Використовуємо Message як "Message" об'єкт, з якого редагуємо
-    )
-    
-    await _show_profile_menu(temp_callback, user_repo, loyalty_service, state)
+    await state.set_state(ProfileState.main) 
+    await _show_profile_menu(CallbackQuery(id='temp', from_user=message.from_user, chat_instance='temp', data='show_profile', message=message), user_repo, loyalty_service, state)
     
     
 # --- 4. Обробник: Видалення Номера Телефону ---
@@ -170,7 +150,6 @@ async def remove_phone_handler(
         await user_repo.session.commit()
         await callback.answer("Номер телефону видалено!")
     
-    # Повторне відображення профілю
     await _show_profile_menu(callback, user_repo, loyalty_service, state)
 
 
@@ -181,19 +160,19 @@ async def change_location_from_profile_handler(
     location_repo: LocationRepository,
     state: FSMContext
 ) -> None:
-    """Перехід до вибору локації (використовуємо логіку з handlers/start.py)."""
-    from src.bot.handlers.start import _show_location_selection # <--- УМОВНИЙ ІМПОРТ ПРИВАТНОЇ ФУНКЦІЇ З ІНШОГО МОДУЛЯ
+    """Перехід до вибору локації."""
     
     locations_db = await location_repo.get_active_locations()
     
     await callback.message.edit_text(
         "📍 **Зміна Локації**\n\nБудь ласка, виберіть нову локацію:",
-        reply_markup=_show_location_selection(locations_db), # Використовуємо клавіатуру вибору локації
+        reply_markup=_show_location_selection(locations_db),
         parse_mode="Markdown"
     )
     
-    # Встановлюємо FSM-стан, щоб очікувати відповіді вибору локації
-    await state.set_state(ProfileState.waiting_for_location_change) # Потрібно додати цей стан до ProfileState!
+    # Встановлюємо FSM-стан, щоб обробник start.py міг обробити відповідь
+    # Використовуємо OrderState.in_menu як спільний стан для вибору локації
+    await state.set_state(OrderState.in_menu) 
     await callback.answer("Вибір локації")
 
 
@@ -206,19 +185,16 @@ async def back_to_main_from_profile_handler(
     state: FSMContext
 ) -> None:
     """Повернення до головного меню."""
-    from src.bot.handlers.start import _show_main_menu # <--- УМОВНИЙ ІМПОРТ ПРИВАТНОЇ ФУНКЦІЇ
 
     await state.clear()
     
     user_db = await user_repo.get_by_id(callback.from_user.id)
     
-    # Використовуємо існуючу логіку відображення головного меню
     if user_db.preferred_location_id:
         location = await location_repo.get_by_id(user_db.preferred_location_id)
         location_name = location.name if location else "Невідома локація"
         await _show_main_menu(callback, user_db, location_name)
     else:
-        # Якщо локація зникла, повертаємо до стартового повідомлення
         await callback.message.edit_text("Будь ласка, почніть з команди /start, щоб вибрати локацію.")
         
     await callback.answer("Повернення до головного меню.")
