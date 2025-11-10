@@ -1,8 +1,8 @@
 # src/db/base.py
 
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import text, DateTime, mapped_column, Mapped
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column # <--- ВИПРАВЛЕНО: Mapped та mapped_column імпортуємо з sqlalchemy.orm
+from sqlalchemy import text, DateTime
 from datetime import datetime
 
 class Base(AsyncAttrs, DeclarativeBase):
