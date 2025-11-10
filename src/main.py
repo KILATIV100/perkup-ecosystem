@@ -7,12 +7,12 @@ from loguru import logger
 
 # --- Імпорти з нашої екосистеми ---
 from src.app.config import settings
-from src.bot.handlers import start
 from src.db.models import Base
 from src.db.database import create_db_and_tables, AsyncSessionLocal
 from src.db.seed import seed_db
 from src.app.repositories.user_repo import UserRepository
-from src.app.repositories.location_repo import LocationRepository # <--- НОВИЙ ІМПОРТ
+from src.app.repositories.location_repo import LocationRepository
+from src.app.repositories.product_repo import ProductRepository 
 from src.db.database import get_db_session
 
 # --- Middlewares ---
@@ -26,12 +26,14 @@ async def db_session_middleware(handler, event: Update, data: dict):
     async for session in get_db_session():
         # 1. Ініціалізація Репозиторіїв
         user_repo = UserRepository(session)
-        location_repo = LocationRepository(session) # <--- ІНІЦІАЛІЗАЦІЯ LOCATION REPO
+        location_repo = LocationRepository(session)
+        product_repo = ProductRepository(session)
         
         # 2. Передача в контекст
         data["session"] = session
         data["user_repo"] = user_repo
-        data["location_repo"] = location_repo # <--- ПЕРЕДАЧА В КОНТЕКСТ
+        data["location_repo"] = location_repo
+        data["product_repo"] = product_repo 
         
         # 3. Виконання наступного хендлера/мідлвару
         result = await handler(event, data)
@@ -60,11 +62,14 @@ async def main() -> None:
 
 
     # 4. Ініціалізація Bot та Dispatcher
+    from src.bot.handlers import start, menu 
+    
     bot = Bot(token=settings.BOT_TOKEN, parse_mode="HTML")
     dp = Dispatcher()
 
     # 5. Реєстрація Роутерів (Обробників)
     dp.include_router(start.router)
+    dp.include_router(menu.router)
     
     # 6. Встановлення Middleware для Dependency Injection
     dp.update.middleware(db_session_middleware)
