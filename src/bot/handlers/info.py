@@ -18,7 +18,6 @@ async def show_locations_handler(
     """
     Показує користувачеві список усіх локацій з можливістю перейти на карту.
     """
-    # 1. Отримання активних локацій
     locations_db = await location_repo.get_active_locations()
     locations_dto = [LocationDTO.model_validate(loc) for loc in locations_db]
 
@@ -26,7 +25,6 @@ async def show_locations_handler(
         await callback.answer("На жаль, інформація про локації тимчасово недоступна.")
         return
         
-    # 2. Формування тексту та клавіатури
     locations_text = (
         "🗺️ **Наші Локації PerkUP**\n\n"
         "Ви можете відвідати нас у цих точках. Для навігації натисніть кнопку з назвою локації "
@@ -42,7 +40,7 @@ async def show_locations_handler(
 
 
 # --- 2. Обробник: Надсилання Геолокації (Telegram Location) ---
-@router.callback_query(F.data.startswith("send_loc:"))
+@router.callback_query(F.data.startswith("send_loc:")) # <--- ВИПРАВЛЕНО
 async def send_location_handler(
     callback: CallbackQuery,
     location_repo: LocationRepository
@@ -55,13 +53,11 @@ async def send_location_handler(
     location_db = await location_repo.get_by_id(location_id)
     
     if location_db:
-        # Надсилаємо Location об'єкт
         await callback.message.answer_location(
             latitude=location_db.latitude,
             longitude=location_db.longitude,
-            # Додаткова інформація
-            live_period=None, # Не динамічна локація
-            horizontal_accuracy=50.0 # Радіус точності
+            live_period=None,
+            horizontal_accuracy=50.0
         )
         await callback.answer(f"Надіслано геолокацію: {location_db.name}")
     else:
