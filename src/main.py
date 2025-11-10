@@ -13,6 +13,7 @@ from src.db.seed import seed_db
 from src.app.repositories.user_repo import UserRepository
 from src.app.repositories.location_repo import LocationRepository
 from src.app.repositories.product_repo import ProductRepository 
+from src.app.repositories.order_repo import OrderRepository # <--- НОВИЙ ІМПОРТ
 from src.db.database import get_db_session
 
 # --- Middlewares ---
@@ -28,12 +29,14 @@ async def db_session_middleware(handler, event: Update, data: dict):
         user_repo = UserRepository(session)
         location_repo = LocationRepository(session)
         product_repo = ProductRepository(session)
+        order_repo = OrderRepository(session) # <--- ІНІЦІАЛІЗАЦІЯ ORDER REPO
         
         # 2. Передача в контекст
         data["session"] = session
         data["user_repo"] = user_repo
         data["location_repo"] = location_repo
         data["product_repo"] = product_repo 
+        data["order_repo"] = order_repo # <--- ПЕРЕДАЧА В КОНТЕКСТ
         
         # 3. Виконання наступного хендлера/мідлвару
         result = await handler(event, data)
