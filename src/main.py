@@ -4,7 +4,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
 from loguru import logger
-import httpx # <--- ДОДАНО: Перевіряємо наявність httpx
+import httpx 
 
 # --- Імпорти з нашої екосистеми ---
 from src.app.config import settings
@@ -16,13 +16,11 @@ from src.app.repositories.location_repo import LocationRepository
 from src.app.repositories.product_repo import ProductRepository 
 from src.app.repositories.order_repo import OrderRepository
 from src.db.database import get_db_session
-from src.app.services.loyalty_service import PosterLoyaltyService # <--- НОВИЙ ІМПОРТ
+from src.app.services.loyalty_service import PosterLoyaltyService 
 
-# --- Ініціалізація Сервісів (зберігаємо поза асинхронною функцією) ---
+# --- Ініціалізація Сервісів ---
 try:
-    # Ініціалізація Poster Loyalty Service
     loyalty_service = PosterLoyaltyService()
-    # Якщо httpx не встановлено, це не викличе помилку тут, але може виникнути пізніше.
 except Exception as e:
     logger.error(f"Failed to initialize PosterLoyaltyService: {e}")
     loyalty_service = None 
@@ -48,7 +46,7 @@ async def db_session_middleware(handler, event: Update, data: dict):
         data["location_repo"] = location_repo
         data["product_repo"] = product_repo 
         data["order_repo"] = order_repo
-        data["loyalty_service"] = loyalty_service # <--- ПЕРЕДАЧА СЕРВІСУ
+        data["loyalty_service"] = loyalty_service
         
         # 3. Виконання наступного хендлера/мідлвару
         result = await handler(event, data)
@@ -80,7 +78,7 @@ async def main() -> None:
 
 
     # 4. Ініціалізація Bot та Dispatcher
-    from src.bot.handlers import start, menu 
+    from src.bot.handlers import start, menu, profile # <--- ДОДАНО PROFILE
     
     bot = Bot(token=settings.BOT_TOKEN, parse_mode="HTML")
     dp = Dispatcher()
@@ -88,6 +86,7 @@ async def main() -> None:
     # 5. Реєстрація Роутерів (Обробників)
     dp.include_router(start.router)
     dp.include_router(menu.router)
+    dp.include_router(profile.router) # <--- РЕЄСТРАЦІЯ PROFILE
     
     # 6. Встановлення Middleware для Dependency Injection
     dp.update.middleware(db_session_middleware)
@@ -96,7 +95,6 @@ async def main() -> None:
     logger.info("Starting bot polling...")
     await bot.delete_webhook(drop_pending_updates=True) 
     
-    # Закриваємо HTTP клієнт перед завершенням
     if loyalty_service and loyalty_service._client:
         dp.shutdown.register(loyalty_service._client.aclose)
         
@@ -104,7 +102,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    # Перевіряємо, чи встановлено httpx
     try:
         import httpx
     except ImportError:
