@@ -25,7 +25,7 @@ except Exception as e:
     logger.error(f"Failed to initialize PosterLoyaltyService: {e}")
     loyalty_service = None 
 
-# --- Middlewares ---
+# --- Middlewares (Без змін) ---
 
 async def db_session_middleware(handler, event: Update, data: dict):
     """
@@ -78,7 +78,7 @@ async def main() -> None:
 
 
     # 4. Ініціалізація Bot та Dispatcher
-    from src.bot.handlers import start, menu, profile # <--- ДОДАНО PROFILE
+    from src.bot.handlers import start, menu, profile, info # <--- ДОДАНО INFO
     
     bot = Bot(token=settings.BOT_TOKEN, parse_mode="HTML")
     dp = Dispatcher()
@@ -86,7 +86,8 @@ async def main() -> None:
     # 5. Реєстрація Роутерів (Обробників)
     dp.include_router(start.router)
     dp.include_router(menu.router)
-    dp.include_router(profile.router) # <--- РЕЄСТРАЦІЯ PROFILE
+    dp.include_router(profile.router)
+    dp.include_router(info.router) # <--- РЕЄСТРАЦІЯ INFO
     
     # 6. Встановлення Middleware для Dependency Injection
     dp.update.middleware(db_session_middleware)
