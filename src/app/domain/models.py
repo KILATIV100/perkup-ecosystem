@@ -2,7 +2,6 @@
 # Pydantic моделі для чистої передачі даних між шарами (Application, Domain, Bot)
 
 from pydantic import BaseModel, Field
-from datetime import datetime
 from typing import List, Optional
 
 # --- Value Objects ---
@@ -18,7 +17,8 @@ class LocationDTO(BaseModel):
     id: int
     name: str
     address: str
-    coords: Coordinates # Використовуємо Value Object
+    latitude: float
+    longitude: float
     is_active: bool
 
     class Config:
@@ -36,4 +36,4 @@ class UserDTO(BaseModel):
     class Config:
         from_attributes = True
 
-# ... інші DTOs (ProductDTO, OrderItemDTO, OrderDTO) будуть додані пізніше.
+# Тут будуть додані інші DTOs: ProductDTO, OrderItemDTO, OrderDTO
