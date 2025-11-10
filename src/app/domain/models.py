@@ -22,7 +22,6 @@ class LocationDTO(BaseModel):
     is_active: bool
 
     class Config:
-        # Дозволяємо Pydantic створювати моделі безпосередньо з ORM-об'єктів
         from_attributes = True 
 
 class UserDTO(BaseModel):
@@ -36,4 +35,57 @@ class UserDTO(BaseModel):
     class Config:
         from_attributes = True
 
-# Тут будуть додані інші DTOs: ProductDTO, OrderItemDTO, OrderDTO
+class CategoryDTO(BaseModel):
+    """DTO для Категорії меню."""
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+class OptionDTO(BaseModel):
+    """DTO для опції товару (модифікатора)."""
+    id: int
+    name: str
+    extra_cost: float = 0.00
+    option_group: str
+
+    class Config:
+        from_attributes = True
+
+class ProductDTO(BaseModel):
+    """Базовий DTO для Товару/Напою з меню."""
+    id: int
+    name: str
+    description: Optional[str] = None
+    base_price: float
+    category_id: int
+    is_available: bool
+
+    class Config:
+        from_attributes = True
+        
+class ConfigurableProductDTO(ProductDTO):
+    """DTO для Товару з його доступними опціями."""
+    available_options: List[OptionDTO] = Field(default_factory=list) 
+
+# --- Cart/Order DTOs (Для FSM контексту) ---
+
+class CartItemDTO(BaseModel):
+    """Одиниця товару в кошику з вибраними опціями."""
+    product_id: int
+    product_name: str
+    quantity: int = 1
+    unit_price: float # Базова ціна + вартість вибраних опцій
+    selected_options: List[OptionDTO] = Field(default_factory=list)
+
+class ShoppingCartDTO(BaseModel):
+    """DTO, що представляє поточний кошик користувача."""
+    location_id: int = Field(..., description="ID локації, для якої робиться замовлення.")
+    items: List[CartItemDTO] = Field(default_factory=list)
+    total_amount: float = 0.00
+    
+    def calculate_total(self) -> float:
+        """Перераховує загальну суму кошика."""
+        self.total_amount = sum(item.unit_price * item.quantity for item in self.items)
+        return self.total_amount
