@@ -1,4 +1,4 @@
-# src/main.py
+# src/main.py (ОНОВЛЕНО: БЕЗ ЗМІНИ ЛОГІКИ, ЛИШЕ ПІДТРИМАННЯ КОНФІГУ)
 
 import asyncio
 from aiogram import Bot, Dispatcher
@@ -17,15 +17,13 @@ async def main() -> None:
     logger.info("Starting PerkUP Ecosystem Bot...")
 
     # 2. Ініціалізація Bot та Dispatcher
-    # Використовуємо parse_mode="HTML" або "Markdown" для глобального форматування
     bot = Bot(token=settings.BOT_TOKEN, parse_mode="HTML")
     dp = Dispatcher()
 
     # 3. Реєстрація Роутерів (Обробників)
-    # Згідно з Чистою Архітектурою, ми реєструємо тільки bot-специфічні роутери
     dp.include_router(start.router)
     
-    # !!! ТУТ БУДЕ ІНІЦІАЛІЗАЦІЯ DB ТА DI (Dependency Injection) ПІЗНІШЕ !!!
+    # ...
     
     # 4. Запуск Polling
     logger.info("Starting bot polling...")
