@@ -1,16 +1,17 @@
-# src/app/config.py
+# src/app/config.py (ОНОВЛЕНО)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
     Основний клас налаштувань для проєкту PerkUP.
-    Налаштування завантажуються з .env файлу або змінних середовища.
+    Налаштування завантажуються виключно зі змінних середовища.
     """
 
     # Налаштування Telegram Bot
-    BOT_TOKEN: str = "YOUR_BOT_TOKEN_HERE"
-    ADMIN_ID: int = 123456789  # ID для адміністратора
+    # Зверніть увагу: ці значення повинні бути встановлені як Secrets у Codespaces!
+    BOT_TOKEN: str
+    ADMIN_ID: int = 123456789  # ID для адміністратора (можна залишити значення за замовчуванням)
 
     # Налаштування Бази Даних (PostgreSQL/SQLAlchemy)
     DB_HOST: str = "localhost"
@@ -23,16 +24,17 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         """Повертає рядок підключення до бази даних PostgreSQL (асинхронний)."""
+        # Використовуємо f-рядок для формування URL
         return (
             f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@"
             f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Видаляємо env_file=".env". Тепер Pydantic шукає лише в Environment Variables.
         env_file_encoding="utf-8",
-        extra="ignore"  # Ігноруємо зайві змінні в .env
+        extra="ignore"
     )
 
-# Створюємо єдиний екземпляр налаштувань для використання по всьому проєкту
+# Створюємо єдиний екземпляр налаштувань
 settings = Settings()
