@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 def get_pickup_time_keyboard() -> InlineKeyboardMarkup:
     """
     Створює Inline-клавіатуру для вибору часу отримання замовлення.
-    Опції: "Зараз" (найближчий час) або інтервали 10-20-30 хвилин.
     """
     builder = InlineKeyboardBuilder()
     
@@ -29,7 +28,6 @@ def get_pickup_time_keyboard() -> InlineKeyboardMarkup:
             callback_data=f"time:{minutes}"
         )
     
-    # Розподіляємо час по два в ряд
     builder.adjust(1, 2, 1)
 
     # 3. Навігаційні кнопки
@@ -39,10 +37,10 @@ def get_pickup_time_keyboard() -> InlineKeyboardMarkup:
 
     return builder.as_markup()
 
-def get_payment_method_keyboard(total_amount: float) -> InlineKeyboardMarkup:
+def get_payment_method_keyboard(total_amount: float, available_points: int) -> InlineKeyboardMarkup:
     """
     Створює Inline-клавіатуру для вибору способу оплати.
-    TODO: Інтеграція з LiqPay/MonoPay
+    :param available_points: Кількість доступних бонусних балів.
     """
     builder = InlineKeyboardBuilder()
 
@@ -56,10 +54,18 @@ def get_payment_method_keyboard(total_amount: float) -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="💰 Оплата готівкою/карткою при отриманні", callback_data="pay:upon_pickup")
     )
     
-    # Використання бонусів (якщо реалізовано)
-    # builder.row(
-    #     InlineKeyboardButton(text=f"✨ Використати бонуси", callback_data="pay:bonus")
-    # )
+    # Використання бонусів (відображається, якщо є доступні бали)
+    if available_points > 0:
+        # Припустимо, 1 бонус = 1 гривня. Не більше 50% чека.
+        max_spend = int(total_amount * 0.5)
+        points_to_spend = min(available_points, max_spend)
+        
+        builder.row(
+            InlineKeyboardButton(
+                text=f"✨ Сплатити {points_to_spend} бонусами ({points_to_spend:.2f} грн)", 
+                callback_data=f"pay:bonus:{points_to_spend}"
+            )
+        )
 
     builder.row(
         InlineKeyboardButton(text="⬅️ Назад до Часу Отримання", callback_data="back_to_time_select")
