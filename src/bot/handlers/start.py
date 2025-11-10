@@ -1,8 +1,8 @@
 # src/bot/handlers/start.py
 
-from aiogram import Router
-from aiogram.filters import CommandStart, Text
-from aiogram.types import Message, CallbackQuery
+from aiogram import Router, F # <-- F вже імпортовано для Magic Filters
+from aiogram.filters import CommandStart # <--- Видалено імпорт Text
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from loguru import logger
 from src.app.repositories.user_repo import UserRepository
 from src.app.repositories.location_repo import LocationRepository
@@ -14,7 +14,7 @@ from src.app.services.loyalty_service import PosterLoyaltyService
 
 router = Router()
 
-# --- Приватна функція для відображення головного меню (ЕКСПОРТОВАНО) ---
+# --- Приватна функція для відображення головного меню ---
 async def _show_main_menu(message_or_callback: Message | CallbackQuery, user: User, location_name: str) -> None:
     """Показує головне меню бота (викликається, коли локація вже вибрана)."""
     
@@ -27,7 +27,6 @@ async def _show_main_menu(message_or_callback: Message | CallbackQuery, user: Us
         "Обери дію, щоб зробити замовлення, переглянути бонуси або профіль:"
     )
     
-    # Відповідь має бути відредагована або нова залежно від типу вхідного об'єкта
     if isinstance(message_or_callback, CallbackQuery):
         await target_message.edit_text(
             welcome_text,
@@ -41,9 +40,10 @@ async def _show_main_menu(message_or_callback: Message | CallbackQuery, user: Us
             parse_mode="Markdown" 
         )
         
-# --- Приватна функція для отримання клавіатури локацій (ЕКСПОРТОВАНО) ---
+# --- Приватна функція для отримання клавіатури локацій ---
 def _show_location_selection(locations_db: list) -> InlineKeyboardMarkup:
     """Формує клавіатуру вибору локацій."""
+    from src.bot.keyboards.location_menu import get_location_selection_keyboard
     locations_dto = [LocationDTO.model_validate(loc) for loc in locations_db]
     return get_location_selection_keyboard(locations_dto)
 
@@ -90,7 +90,7 @@ async def command_start_handler(
         
 
 # --- 2. Обробник Callback Query для вибору локації ---
-@router.callback_query(Text(startswith="select_loc:"))
+@router.callback_query(F.data.startswith("select_loc:")) # <--- ВИПРАВЛЕНО: Використовуємо F.data.startswith
 async def select_location_callback(
     callback: CallbackQuery,
     user_repo: UserRepository,
@@ -109,13 +109,11 @@ async def select_location_callback(
         user_db.preferred_location_id = location_id
         await user_repo.session.commit()
         
-        # Редагуємо повідомлення про вибір
         await callback.message.edit_text(
             f"✅ Ваша локація встановлена: **{location_db.name}**! \n\n"
             "Тепер ви можете перейти до формування замовлення.",
             parse_mode="Markdown"
         )
-        # Показуємо головне меню новим повідомленням
         await _show_main_menu(callback, user_db, location_db.name)
         
         await callback.answer(f"Локація змінена на {location_db.name}")
