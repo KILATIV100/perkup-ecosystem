@@ -4,6 +4,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
 from loguru import logger
+import httpx # <--- ДОДАНО: Перевіряємо наявність httpx
 
 # --- Імпорти з нашої екосистеми ---
 from src.app.config import settings
@@ -13,8 +14,18 @@ from src.db.seed import seed_db
 from src.app.repositories.user_repo import UserRepository
 from src.app.repositories.location_repo import LocationRepository
 from src.app.repositories.product_repo import ProductRepository 
-from src.app.repositories.order_repo import OrderRepository # <--- НОВИЙ ІМПОРТ
+from src.app.repositories.order_repo import OrderRepository
 from src.db.database import get_db_session
+from src.app.services.loyalty_service import PosterLoyaltyService # <--- НОВИЙ ІМПОРТ
+
+# --- Ініціалізація Сервісів (зберігаємо поза асинхронною функцією) ---
+try:
+    # Ініціалізація Poster Loyalty Service
+    loyalty_service = PosterLoyaltyService()
+    # Якщо httpx не встановлено, це не викличе помилку тут, але може виникнути пізніше.
+except Exception as e:
+    logger.error(f"Failed to initialize PosterLoyaltyService: {e}")
+    loyalty_service = None 
 
 # --- Middlewares ---
 
@@ -29,14 +40,15 @@ async def db_session_middleware(handler, event: Update, data: dict):
         user_repo = UserRepository(session)
         location_repo = LocationRepository(session)
         product_repo = ProductRepository(session)
-        order_repo = OrderRepository(session) # <--- ІНІЦІАЛІЗАЦІЯ ORDER REPO
+        order_repo = OrderRepository(session)
         
         # 2. Передача в контекст
         data["session"] = session
         data["user_repo"] = user_repo
         data["location_repo"] = location_repo
         data["product_repo"] = product_repo 
-        data["order_repo"] = order_repo # <--- ПЕРЕДАЧА В КОНТЕКСТ
+        data["order_repo"] = order_repo
+        data["loyalty_service"] = loyalty_service # <--- ПЕРЕДАЧА СЕРВІСУ
         
         # 3. Виконання наступного хендлера/мідлвару
         result = await handler(event, data)
@@ -52,6 +64,9 @@ async def main() -> None:
     # 1. Ініціалізація Логера
     logger.add("file.log", rotation="10 MB", compression="zip", level="INFO")
     logger.info("Starting PerkUP Ecosystem Bot...")
+    
+    if loyalty_service is None:
+        logger.error("PosterLoyaltyService is NOT initialized. Loyalty functions will fail.")
 
     # 2. Ініціалізація Бази Даних та Таблиць
     logger.info(f"Connecting to database: {settings.DB_HOST}/{settings.DB_NAME}...")
@@ -80,12 +95,23 @@ async def main() -> None:
     # 7. Запуск Polling
     logger.info("Starting bot polling...")
     await bot.delete_webhook(drop_pending_updates=True) 
+    
+    # Закриваємо HTTP клієнт перед завершенням
+    if loyalty_service and loyalty_service._client:
+        dp.shutdown.register(loyalty_service._client.aclose)
+        
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
+    # Перевіряємо, чи встановлено httpx
     try:
-        # Запуск асинхронної функції
+        import httpx
+    except ImportError:
+        print("ERROR: Бібліотека 'httpx' не встановлена. Додайте 'httpx' до requirements.txt і встановіть її.")
+        exit(1)
+        
+    try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.warning("Bot stopped by user or system signal.")
