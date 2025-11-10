@@ -1,9 +1,14 @@
 # src/db/models.py
 
 from typing import List
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Numeric, Text, String, Integer
+# --- ВИПРАВЛЕНО: Додано DateTime для використання як типу колонок SQLAlchemy ---
+from sqlalchemy import BigInteger, Boolean, ForeignKey, Numeric, Text, String, Integer, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+# --- ВИПРАВЛЕНО: Додано datetime для використання як типу Python ---
+from datetime import datetime
+
 from src.db.base import Base
+
 
 # --- Допоміжна таблиця для зв'язку "Багато-до-Багатьох" (Products <-> Options) ---
 class ProductOptionAssociation(Base):
@@ -119,7 +124,7 @@ class Order(Base):
     points_used: Mapped[int] = mapped_column(Integer, default=0)
     points_earned: Mapped[int] = mapped_column(Integer, default=0)
     
-    pickup_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    pickup_time: Mapped[datetime] = mapped_column(DateTime(timezone=True)) # <--- ВИПРАВЛЕНО
     
     # Зв'язки
     user: Mapped["User"] = relationship(back_populates="orders")
