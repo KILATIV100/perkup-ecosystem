@@ -1,6 +1,7 @@
-# src/app/config.py (ОНОВЛЕНО)
+# src/app/config.py
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 class Settings(BaseSettings):
     """
@@ -9,9 +10,8 @@ class Settings(BaseSettings):
     """
 
     # Налаштування Telegram Bot
-    # Зверніть увагу: ці значення повинні бути встановлені як Secrets у Codespaces!
     BOT_TOKEN: str
-    ADMIN_ID: int = 123456789  # ID для адміністратора (можна залишити значення за замовчуванням)
+    ADMIN_ID: int = Field(123456789, description="Telegram ID для адміністратора")
 
     # Налаштування Бази Даних (PostgreSQL/SQLAlchemy)
     DB_HOST: str = "localhost"
@@ -20,18 +20,25 @@ class Settings(BaseSettings):
     DB_USER: str = "perkup_user"
     DB_PASS: str = "secret_password"
 
-    # Властивість, що формує URL для підключення до бази даних
+    # --- НОВІ НАЛАШТУВАННЯ: Poster POS API ---
+    POSTER_API_BASE_URL: str = "https://api.joinposter.com/api/v3"
+    POSTER_ACCESS_TOKEN: str = Field(..., description="API Access Token для авторизації")
+    POSTER_ACCOUNT_DOMAIN: str = Field(..., description="Домен вашого Poster акаунта (напр., perkup)")
+    
+    # ID вашого закладу/каси для створення замовлення
+    POSTER_SPOT_ID: int = Field(1, description="ID точки продажу (Spot ID) для замовлень")
+    POSTER_CASH_DRAWER_ID: int = Field(1, description="ID каси (Cash Drawer ID)")
+
+
     @property
     def DATABASE_URL(self) -> str:
         """Повертає рядок підключення до бази даних PostgreSQL (асинхронний)."""
-        # Використовуємо f-рядок для формування URL
         return (
             f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@"
             f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
     model_config = SettingsConfigDict(
-        # Видаляємо env_file=".env". Тепер Pydantic шукає лише в Environment Variables.
         env_file_encoding="utf-8",
         extra="ignore"
     )
