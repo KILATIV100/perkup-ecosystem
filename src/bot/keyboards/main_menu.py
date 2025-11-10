@@ -6,23 +6,27 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     """
     Створює Inline-клавіатуру головного меню.
-    UI/UX: Використовуємо емодзі для візуалізації функціоналу.
     """
     builder = InlineKeyboardBuilder()
 
     # Основні Функції
+    # Кнопка "Зробити Замовлення" ініціює новий процес (callback: 'start_order')
     builder.row(
-        InlineKeyboardButton(text="💸 Мої Перки", callback_data="show_perks"),
-        InlineKeyboardButton(text="🎁 Отримати Перк", callback_data="claim_perk")
+        InlineKeyboardButton(text="☕️ Зробити Замовлення", callback_data="start_order")
     )
 
-    # Навігація/Інформація
+    # Функціонал Лояльності та Профілю
     builder.row(
-        InlineKeyboardButton(text="⚙️ Налаштування", callback_data="settings"),
-        InlineKeyboardButton(text="❓ Допомога/FAQ", callback_data="help")
+        InlineKeyboardButton(text="💸 Мої Бонуси / Профіль", callback_data="show_profile"),
+        InlineKeyboardButton(text="⭐ Улюблені Замовлення", callback_data="show_favorites")
     )
     
-    # Використання 'adjust' для автоматичного розподілу кнопок
-    # builder.adjust(2, 2) 
+    # Інформаційний Функціонал
+    builder.row(
+        InlineKeyboardButton(text="🗺️ Наші Локації", callback_data="show_locations"),
+        InlineKeyboardButton(text="💡 Новини та Акції", callback_data="show_news")
+    )
+    
+    builder.adjust(1, 2, 2) 
 
     return builder.as_markup()
