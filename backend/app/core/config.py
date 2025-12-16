@@ -2,6 +2,7 @@
 
 from typing import List
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
 
 
@@ -18,6 +19,16 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/perkup"
     DB_ECHO: bool = False
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def convert_database_url(cls, v: str) -> str:
+        """Convert postgresql:// to postgresql+asyncpg:// for async driver"""
+        if v and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if v and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+        return v
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
