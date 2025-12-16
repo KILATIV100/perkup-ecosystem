@@ -1,10 +1,18 @@
 """Application configuration settings"""
 
 import json
-from typing import List, Union
+from typing import List, Any
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
+from pydantic import model_validator
 from functools import lru_cache
+
+
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://perkup.com.ua",
+    "https://tma.perkup.com.ua",
+]
 
 
 class Settings(BaseSettings):
@@ -34,37 +42,29 @@ class Settings(BaseSettings):
     TELEGRAM_WEBHOOK_URL: str = ""
     TELEGRAM_WEBAPP_URL: str = "https://tma.perkup.com.ua"
 
-    # CORS
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://perkup.com.ua",
-        "https://tma.perkup.com.ua",
-    ]
+    # CORS - stored as str to avoid pydantic-settings JSON parsing issues
+    CORS_ORIGINS: str = ""
 
-    @field_validator("DATABASE_URL", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def convert_database_url(cls, v: str) -> str:
-        """Convert postgresql:// to postgresql+asyncpg:// for async driver"""
-        if v and v.startswith("postgresql://"):
-            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        if v and v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql+asyncpg://", 1)
-        return v
+    def preprocess_settings(cls, data: Any) -> Any:
+        """Preprocess settings before validation"""
+        if isinstance(data, dict):
+            # Convert DATABASE_URL to asyncpg format
+            db_url = data.get("DATABASE_URL", "")
+            if db_url:
+                if db_url.startswith("postgresql://"):
+                    data["DATABASE_URL"] = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+                elif db_url.startswith("postgres://"):
+                    data["DATABASE_URL"] = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return data
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        """Parse CORS origins from various formats"""
-        if isinstance(v, list):
-            return v
-        if not v or v.strip() == "":
-            return [
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "https://perkup.com.ua",
-                "https://tma.perkup.com.ua",
-            ]
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Get CORS origins as a list"""
+        if not self.CORS_ORIGINS or self.CORS_ORIGINS.strip() == "":
+            return DEFAULT_CORS_ORIGINS
+        v = self.CORS_ORIGINS.strip()
         # Try JSON array first
         if v.startswith("["):
             try:
