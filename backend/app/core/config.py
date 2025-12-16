@@ -1,6 +1,7 @@
 """Application configuration settings"""
 
-from typing import List
+import json
+from typing import List, Union
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from functools import lru_cache
@@ -19,16 +20,6 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/perkup"
     DB_ECHO: bool = False
-
-    @field_validator("DATABASE_URL", mode="before")
-    @classmethod
-    def convert_database_url(cls, v: str) -> str:
-        """Convert postgresql:// to postgresql+asyncpg:// for async driver"""
-        if v and v.startswith("postgresql://"):
-            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        if v and v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql+asyncpg://", 1)
-        return v
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -50,6 +41,38 @@ class Settings(BaseSettings):
         "https://perkup.com.ua",
         "https://tma.perkup.com.ua",
     ]
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def convert_database_url(cls, v: str) -> str:
+        """Convert postgresql:// to postgresql+asyncpg:// for async driver"""
+        if v and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if v and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+        return v
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        """Parse CORS origins from various formats"""
+        if isinstance(v, list):
+            return v
+        if not v or v.strip() == "":
+            return [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://perkup.com.ua",
+                "https://tma.perkup.com.ua",
+            ]
+        # Try JSON array first
+        if v.startswith("["):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                pass
+        # Comma-separated
+        return [origin.strip() for origin in v.split(",") if origin.strip()]
 
     # Check-in settings
     CHECKIN_RADIUS_METERS: int = 100
